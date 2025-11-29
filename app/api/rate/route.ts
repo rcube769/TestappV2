@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveRating, hasUserRatedHouse } from '@/lib/storage'
-import { findOrCreateHouse } from '@/lib/houses'
+import { findOrCreateHouseByAddress } from '@/lib/houses'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,13 +11,13 @@ export async function POST(request: NextRequest) {
     const candy_rating = body.candy_rating || (body.candy ? Math.ceil((body.candy / 10) * 5) : undefined)
     const decorations_rating = body.decorations_rating || (body.decorations ? Math.ceil((body.decorations / 10) * 5) : undefined)
     const notes = body.notes || ''
-    const address = body.address || `${lat?.toFixed(4)}, ${lng?.toFixed(4)}`
+    const address = body.address
     const userFingerprint = body.userFingerprint
 
     // Validate input
-    if (!lat || !lng || candy_rating === undefined || decorations_rating === undefined || !userFingerprint) {
+    if (!lat || !lng || candy_rating === undefined || decorations_rating === undefined || !userFingerprint || !address) {
       return NextResponse.json(
-        { ok: false, error: 'Missing required fields' },
+        { ok: false, error: 'Missing required fields (including house address)' },
         { status: 400 }
       )
     }
@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find or create the closest house (within 50 meters)
-    const house = findOrCreateHouse(lat, lng, 50)
+    // Find or create house by address
+    const house = findOrCreateHouseByAddress(lat, lng, address)
 
     // Check if user has already rated this house
     if (hasUserRatedHouse(userFingerprint, house.id)) {

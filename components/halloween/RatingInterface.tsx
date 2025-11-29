@@ -4,16 +4,17 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Star, X, Ghost, Candy, Sparkles } from 'lucide-react'
+import { Star, X, Ghost, Candy, Sparkles, Home } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface RatingInterfaceProps {
   onClose: () => void
   onSubmit: (candyRating: number, decorationsRating: number, notes: string) => void
   isSubmitting: boolean
+  houseAddress?: string
 }
 
-export default function RatingInterface({ onClose, onSubmit, isSubmitting }: RatingInterfaceProps) {
+export default function RatingInterface({ onClose, onSubmit, isSubmitting, houseAddress }: RatingInterfaceProps) {
   const [candyRating, setCandyRating] = useState(0)
   const [decorationsRating, setDecorationsRating] = useState(0)
   const [hoveredCandyRating, setHoveredCandyRating] = useState(0)
@@ -51,6 +52,16 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting }: Rat
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
+              {/* Show selected house */}
+              {houseAddress && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-purple-700">
+                    <Home className="w-4 h-4" />
+                    <span className="font-semibold text-sm">Rating: {houseAddress}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Candy Rating */}
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="flex items-center justify-center gap-2 mb-3">

@@ -45,6 +45,39 @@ export function getAllHouses(): House[] {
   return JSON.parse(data)
 }
 
+// Find house by address or create a new one
+export function findOrCreateHouseByAddress(
+  lat: number,
+  lng: number,
+  address: string
+): House {
+  const houses = getAllHouses()
+
+  // First, try to find house by exact address match (case-insensitive)
+  const existingHouse = houses.find(
+    (h) => h.address && h.address.toLowerCase() === address.toLowerCase()
+  )
+
+  if (existingHouse) {
+    return existingHouse
+  }
+
+  // If not found by address, create a new house with the provided address
+  const newHouse: House = {
+    id: `house-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    latitude: lat,
+    longitude: lng,
+    address: address,
+    created_date: new Date().toISOString(),
+  }
+
+  houses.push(newHouse)
+  ensureDataDir()
+  fs.writeFileSync(HOUSES_FILE, JSON.stringify(houses, null, 2))
+
+  return newHouse
+}
+
 // Find the closest house to a location, or create a new one if none within threshold
 export function findOrCreateHouse(
   lat: number,

@@ -13,11 +13,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import RatingInterface from '@/components/halloween/RatingInterface'
+import HouseSelector from '@/components/halloween/HouseSelector'
 import NearbyHousesList from '@/components/halloween/NearbyHousesList'
 import Leaderboard from '@/components/halloween/Leaderboard'
 import MyRatings from '@/components/halloween/MyRatings'
 import AdminPanel from '@/components/halloween/AdminPanel'
 import { Shield, X } from 'lucide-react'
+import { SINGLE_HOUSE_CONFIG } from '@/lib/houseConfig'
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -68,8 +70,14 @@ interface Rating {
 
 function HalloweenMapContent() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [showHouseSelector, setShowHouseSelector] = useState(false)
   const [showRatingInterface, setShowRatingInterface] = useState(false)
-  const [mapCenter, setMapCenter] = useState<[number, number]>([40.7128, -74.0060])
+  const [selectedHouseAddress, setSelectedHouseAddress] = useState<string>('')
+  const [mapCenter, setMapCenter] = useState<[number, number]>(
+    SINGLE_HOUSE_CONFIG.enabled
+      ? [SINGLE_HOUSE_CONFIG.location.lat, SINGLE_HOUSE_CONFIG.location.lng]
+      : [40.7128, -74.0060]
+  )
   const [alreadyRatedError, setAlreadyRatedError] = useState<string | null>(null)
   const [currentUserFingerprint, setCurrentUserFingerprint] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -246,32 +254,31 @@ function HalloweenMapContent() {
 
   const handleRateCurrentLocation = async () => {
     if (!userLocation || !currentUserFingerprint) return
+    // Show house selector first
+    setShowHouseSelector(true)
+  }
 
-    // Find the closest house
-    const house = await findClosestHouse(userLocation.lat, userLocation.lng)
-    if (!house) {
-      setAlreadyRatedError('Unable to find house. Please try again.')
-      setTimeout(() => setAlreadyRatedError(null), 3000)
-      return
-    }
-
-    // Check if user has already rated this house
+  const handleSelectHouse = (houseAddress: string) => {
+    // Check if user has already rated this house (by address)
     const hasRated = ratings.some(
       (rating) =>
         rating.userFingerprint === currentUserFingerprint &&
-        rating.house_id === house.id
+        rating.address?.toLowerCase() === houseAddress.toLowerCase()
     )
 
     if (hasRated) {
       setAlreadyRatedError("You've already rated this house!")
       setTimeout(() => setAlreadyRatedError(null), 3000)
+      setShowHouseSelector(false)
     } else {
+      setSelectedHouseAddress(houseAddress)
+      setShowHouseSelector(false)
       setShowRatingInterface(true)
     }
   }
 
   const handleSubmitRating = async (candyRating: number, decorationsRating: number, notes: string) => {
-    if (!userLocation || !currentUserFingerprint) return
+    if (!userLocation || !currentUserFingerprint || !selectedHouseAddress) return
 
     const ratingData = {
       latitude: userLocation.lat,
@@ -279,11 +286,12 @@ function HalloweenMapContent() {
       candy_rating: candyRating,
       decorations_rating: decorationsRating,
       notes: notes || '',
-      address: `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`,
+      address: selectedHouseAddress, // Use the selected address
       userFingerprint: currentUserFingerprint,
     }
 
     createRatingMutation.mutate(ratingData)
+    setSelectedHouseAddress('') // Clear selection
   }
 
   const handleDeleteRating = (ratingId: string) => {
@@ -485,6 +493,21 @@ function HalloweenMapContent() {
                         />
                       </>
                     )}
+                    {/* Single house marker (when enabled and no ratings yet) */}
+                    {SINGLE_HOUSE_CONFIG.enabled && houses.length === 0 && (
+                      <Marker
+                        position={[SINGLE_HOUSE_CONFIG.location.lat, SINGLE_HOUSE_CONFIG.location.lng]}
+                        icon={createCustomIcon(0)}
+                      >
+                        <Popup>
+                          <div className="py-2 min-w-[200px] text-center">
+                            <p className="font-semibold">{SINGLE_HOUSE_CONFIG.address}</p>
+                            <p className="text-sm text-gray-600 mt-1">No ratings yet</p>
+                            <p className="text-xs text-gray-500 mt-1">Be the first to rate!</p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
                     {/* Rated houses */}
                     {houses.map((house, idx) => (
                       <Marker
@@ -539,7 +562,7 @@ function HalloweenMapContent() {
               </div>
             </div>
                             <p className="text-sm text-gray-600 mt-2 text-center">
-                              {house.totalRatings} ratings
+                              {house.totalRatings} rating{house.totalRatings !== 1 ? 's' : ''}
                             </p>
                           </div>
                         </Popup>
@@ -590,12 +613,31 @@ function HalloweenMapContent() {
           </div>
         </div>
       </div>
+      {/* House Selector Modal */}
+      {showHouseSelector && userLocation && (
+        <HouseSelector
+          onClose={() => setShowHouseSelector(false)}
+          onSelectHouse={handleSelectHouse}
+          userLocation={userLocation}
+          existingHouses={houses.map(h => ({
+            id: h.house_id,
+            address: h.address || '',
+            latitude: h.latitude,
+            longitude: h.longitude
+          }))}
+        />
+      )}
+
       {/* Rating Interface Modal */}
       {showRatingInterface && (
         <RatingInterface
-          onClose={() => setShowRatingInterface(false)}
+          onClose={() => {
+            setShowRatingInterface(false)
+            setSelectedHouseAddress('')
+          }}
           onSubmit={handleSubmitRating}
           isSubmitting={createRatingMutation.isPending}
+          houseAddress={selectedHouseAddress}
         />
       )}
     </div>

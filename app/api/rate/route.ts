@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { saveRating, hasUserRatedHouse } from '@/lib/storage'
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    // Support both old and new format
+    const lat = body.latitude || body.lat
+    const lng = body.longitude || body.lng
+    const candy_rating = body.candy_rating || (body.candy ? Math.ceil((body.candy / 10) * 5) : undefined)
+    const decorations_rating = body.decorations_rating || (body.decorations ? Math.ceil((body.decorations / 10) * 5) : undefined)
+    const notes = body.notes || ''
+    const address = body.address || `${lat?.toFixed(4)}, ${lng?.toFixed(4)}`
+    const userFingerprint = body.userFingerprint
+
+    // Validate input
+    if (!lat || !lng || candy_rating === undefined || decorations_rating === undefined || !userFingerprint) {
+      return NextResponse.json(
+        { ok: false, error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    // Validate rating range (1-5)
+    if (candy_rating < 1 || candy_rating > 5 || decorations_rating < 1 || decorations_rating > 5) {
+      return NextResponse.json(
+        { ok: false, error: 'Ratings must be between 1 and 5' },
+        { status: 400 }
+      )
+    }
+
+    // Check if user has already rated this house
+    if (hasUserRatedHouse(userFingerprint, lat, lng)) {
+      return NextResponse.json(
+        { ok: false, error: "You've already rated this house!" },
+        { status: 409 }
+      )
+    }
+
+    // Save the rating
+    const rating = saveRating({
+      latitude: lat,
+      longitude: lng,
+      candy_rating,
+      decorations_rating,
+      notes,
+      address,
+      userFingerprint,
+    })
+
+    console.log('New rating saved:', rating)
+
+    return NextResponse.json({ ok: true, rating })
+  } catch (error) {
+    console.error('Error processing rating:', error)
+    return NextResponse.json(
+      { ok: false, error: 'Failed to process rating' },
+      { status: 500 }
+    )
+  }
+}

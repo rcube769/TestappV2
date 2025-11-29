@@ -1,0 +1,37 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getAllRatings, deleteRating } from '@/lib/storage'
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  try {
+    const resolvedParams = await Promise.resolve(params)
+    const { id } = resolvedParams
+    
+    if (!id) {
+      return NextResponse.json(
+        { ok: false, error: 'Rating ID required' },
+        { status: 400 }
+      )
+    }
+
+    const deleted = deleteRating(id)
+    
+    if (!deleted) {
+      return NextResponse.json(
+        { ok: false, error: 'Rating not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('Error deleting rating:', error)
+    return NextResponse.json(
+      { ok: false, error: 'Failed to delete rating' },
+      { status: 500 }
+    )
+  }
+}
+

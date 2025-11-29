@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Find or create house by address
-    const house = findOrCreateHouseByAddress(lat, lng, address)
+    const house = await findOrCreateHouseByAddress(lat, lng, address)
 
     // Check if user has already rated this house
-    if (hasUserRatedHouse(userFingerprint, house.id)) {
+    if (await hasUserRatedHouse(userFingerprint, house.id)) {
       return NextResponse.json(
         { ok: false, error: "You've already rated this house!" },
         { status: 409 }
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save the rating with house_id
-    const rating = saveRating({
+    const rating = await saveRating({
       house_id: house.id,
       latitude: lat,
       longitude: lng,

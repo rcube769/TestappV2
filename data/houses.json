@@ -5,5 +5,12 @@
     "longitude": -122.00433083523177,
     "address": "37.306175, -122.004331",
     "created_date": "2025-11-29T18:56:36.924Z"
+  },
+  {
+    "id": "house-1764444744495-cloi10n7n",
+    "latitude": 37.30616471605887,
+    "longitude": -122.00411959527392,
+    "address": "1108 Johnson Avenue",
+    "created_date": "2025-11-29T19:32:24.495Z"
   }
 ]

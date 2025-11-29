@@ -15,8 +15,8 @@ export async function DELETE(
       )
     }
 
-    const deleted = deleteRating(id)
-    
+    const deleted = await deleteRating(id)
+
     if (!deleted) {
       return NextResponse.json(
         { ok: false, error: 'Rating not found' },

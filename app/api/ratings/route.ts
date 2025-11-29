@@ -3,7 +3,7 @@ import { getAllRatings } from '@/lib/storage'
 
 export async function GET() {
   try {
-    const ratings = getAllRatings()
+    const ratings = await getAllRatings()
     return NextResponse.json({ ratings })
   } catch (error) {
     console.error('Error fetching ratings:', error)

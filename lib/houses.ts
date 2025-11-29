@@ -1,5 +1,4 @@
-import fs from 'fs'
-import path from 'path'
+import { kv } from '@vercel/kv'
 
 export interface House {
   id: string
@@ -9,15 +8,7 @@ export interface House {
   created_date: string
 }
 
-const HOUSES_FILE = path.join(process.cwd(), 'data', 'houses.json')
-
-// Ensure data directory exists
-function ensureDataDir() {
-  const dataDir = path.join(process.cwd(), 'data')
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true })
-  }
-}
+const HOUSES_KEY = 'halloween:houses'
 
 // Calculate distance between two coordinates in meters
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -36,22 +27,26 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 // Read all houses
-export function getAllHouses(): House[] {
-  ensureDataDir()
-  if (!fs.existsSync(HOUSES_FILE)) {
+export async function getAllHouses(): Promise<House[]> {
+  try {
+    const houses = await kv.get<House[]>(HOUSES_KEY)
+    if (!houses || !Array.isArray(houses)) {
+      return []
+    }
+    return houses
+  } catch (error) {
+    console.error('Error getting all houses:', error)
     return []
   }
-  const data = fs.readFileSync(HOUSES_FILE, 'utf-8')
-  return JSON.parse(data)
 }
 
 // Find house by address or create a new one
-export function findOrCreateHouseByAddress(
+export async function findOrCreateHouseByAddress(
   lat: number,
   lng: number,
   address: string
-): House {
-  const houses = getAllHouses()
+): Promise<House> {
+  const houses = await getAllHouses()
 
   // First, try to find house by exact address match (case-insensitive)
   const existingHouse = houses.find(
@@ -72,19 +67,18 @@ export function findOrCreateHouseByAddress(
   }
 
   houses.push(newHouse)
-  ensureDataDir()
-  fs.writeFileSync(HOUSES_FILE, JSON.stringify(houses, null, 2))
+  await kv.set(HOUSES_KEY, houses)
 
   return newHouse
 }
 
 // Find the closest house to a location, or create a new one if none within threshold
-export function findOrCreateHouse(
+export async function findOrCreateHouse(
   lat: number,
   lng: number,
   thresholdMeters: number = 50
-): House {
-  const houses = getAllHouses()
+): Promise<House> {
+  const houses = await getAllHouses()
 
   // Find closest house
   let closestHouse: House | null = null
@@ -113,15 +107,13 @@ export function findOrCreateHouse(
   }
 
   houses.push(newHouse)
-  ensureDataDir()
-  fs.writeFileSync(HOUSES_FILE, JSON.stringify(houses, null, 2))
+  await kv.set(HOUSES_KEY, houses)
 
   return newHouse
 }
 
 // Get house by ID
-export function getHouseById(houseId: string): House | null {
-  const houses = getAllHouses()
+export async function getHouseById(houseId: string): Promise<House | null> {
+  const houses = await getAllHouses()
   return houses.find((h) => h.id === houseId) || null
 }
-

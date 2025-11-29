@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find or create the closest house (within 50 meters)
-    const house = findOrCreateHouse(latitude, longitude, 50)
+    const house = await findOrCreateHouse(latitude, longitude, 50)
 
     return NextResponse.json({ ok: true, house })
   } catch (error) {

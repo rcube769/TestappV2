@@ -1,5 +1,4 @@
-import fs from 'fs'
-import path from 'path'
+import { kv } from '@vercel/kv'
 
 // New format (preferred)
 export interface Rating {
@@ -21,15 +20,8 @@ export interface Rating {
   timestamp?: string
 }
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'ratings.json')
-
-// Ensure data directory exists
-function ensureDataDir() {
-  const dataDir = path.join(process.cwd(), 'data')
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true })
-  }
-}
+const RATINGS_KEY = 'halloween:ratings'
+const USER_RATINGS_KEY_PREFIX = 'halloween:user_ratings:'
 
 // Normalize old format to new format
 function normalizeRating(rating: any): Rating {
@@ -41,7 +33,7 @@ function normalizeRating(rating: any): Rating {
     }
     return rating as Rating
   }
-  
+
   // Convert old format to new format
   const lat = rating.lat || rating.latitude
   const lng = rating.lng || rating.longitude
@@ -66,19 +58,22 @@ function normalizeRating(rating: any): Rating {
 }
 
 // Read all ratings
-export function getAllRatings(): Rating[] {
-  ensureDataDir()
-  if (!fs.existsSync(DATA_FILE)) {
+export async function getAllRatings(): Promise<Rating[]> {
+  try {
+    const ratings = await kv.get<Rating[]>(RATINGS_KEY)
+    if (!ratings || !Array.isArray(ratings)) {
+      return []
+    }
+    return ratings.map(normalizeRating)
+  } catch (error) {
+    console.error('Error getting all ratings:', error)
     return []
   }
-  const data = fs.readFileSync(DATA_FILE, 'utf-8')
-  const ratings = JSON.parse(data)
-  return ratings.map(normalizeRating)
 }
 
 // Save a new rating
-export function saveRating(rating: Omit<Rating, 'id' | 'created_date'>): Rating {
-  const ratings = getAllRatings()
+export async function saveRating(rating: Omit<Rating, 'id' | 'created_date'>): Promise<Rating> {
+  const ratings = await getAllRatings()
 
   const newRating: Rating = {
     ...rating,
@@ -97,35 +92,67 @@ export function saveRating(rating: Omit<Rating, 'id' | 'created_date'>): Rating 
 
   ratings.push(newRating)
 
-  ensureDataDir()
-  fs.writeFileSync(DATA_FILE, JSON.stringify(ratings, null, 2))
+  // Save to KV
+  await kv.set(RATINGS_KEY, ratings)
+
+  // Track user's ratings for this house for quick duplicate checking
+  const userRatingsKey = `${USER_RATINGS_KEY_PREFIX}${rating.userFingerprint}`
+  const userHouseIds = await kv.get<string[]>(userRatingsKey) || []
+  if (!userHouseIds.includes(newRating.house_id)) {
+    userHouseIds.push(newRating.house_id)
+    await kv.set(userRatingsKey, userHouseIds)
+  }
 
   return newRating
 }
 
 // Check if user has already rated a specific house
-export function hasUserRatedHouse(
+export async function hasUserRatedHouse(
   userFingerprint: string,
   houseId: string
-): boolean {
-  const ratings = getAllRatings()
-  return ratings.some(
-    (rating) =>
-      rating.userFingerprint === userFingerprint &&
-      rating.house_id === houseId
-  )
+): Promise<boolean> {
+  try {
+    // Fast path: check user's specific ratings
+    const userRatingsKey = `${USER_RATINGS_KEY_PREFIX}${userFingerprint}`
+    const userHouseIds = await kv.get<string[]>(userRatingsKey)
+
+    if (userHouseIds && userHouseIds.includes(houseId)) {
+      return true
+    }
+
+    // Fallback: check all ratings (for backward compatibility)
+    const ratings = await getAllRatings()
+    return ratings.some(
+      (rating) =>
+        rating.userFingerprint === userFingerprint &&
+        rating.house_id === houseId
+    )
+  } catch (error) {
+    console.error('Error checking if user rated house:', error)
+    // Fallback to checking all ratings
+    const ratings = await getAllRatings()
+    return ratings.some(
+      (rating) =>
+        rating.userFingerprint === userFingerprint &&
+        rating.house_id === houseId
+    )
+  }
 }
 
 // Delete a rating by ID
-export function deleteRating(ratingId: string): boolean {
-  const ratings = getAllRatings()
-  const initialLength = ratings.length
-  const filtered = ratings.filter(r => r.id !== ratingId)
-  
-  if (filtered.length < initialLength) {
-    ensureDataDir()
-    fs.writeFileSync(DATA_FILE, JSON.stringify(filtered, null, 2))
-    return true
+export async function deleteRating(ratingId: string): Promise<boolean> {
+  try {
+    const ratings = await getAllRatings()
+    const initialLength = ratings.length
+    const filtered = ratings.filter(r => r.id !== ratingId)
+
+    if (filtered.length < initialLength) {
+      await kv.set(RATINGS_KEY, filtered)
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error('Error deleting rating:', error)
+    return false
   }
-  return false
 }

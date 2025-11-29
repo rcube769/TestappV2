@@ -4,6 +4,7 @@ import path from 'path'
 // New format (preferred)
 export interface Rating {
   id: string
+  house_id: string // ID of the house being rated
   latitude: number
   longitude: number
   candy_rating: number // 1-5
@@ -32,20 +33,27 @@ function ensureDataDir() {
 
 // Normalize old format to new format
 function normalizeRating(rating: any): Rating {
-  // If already in new format, return as is
+  // If already in new format, ensure house_id exists
   if (rating.latitude !== undefined && rating.longitude !== undefined) {
+    // If missing house_id, generate one based on location (for backward compatibility)
+    if (!rating.house_id) {
+      rating.house_id = `house-${rating.latitude.toFixed(5)}-${rating.longitude.toFixed(5)}`
+    }
     return rating as Rating
   }
   
   // Convert old format to new format
+  const lat = rating.lat || rating.latitude
+  const lng = rating.lng || rating.longitude
   return {
     id: rating.id,
-    latitude: rating.lat,
-    longitude: rating.lng,
+    house_id: rating.house_id || `house-${lat?.toFixed(5)}-${lng?.toFixed(5)}`,
+    latitude: lat,
+    longitude: lng,
     candy_rating: Math.ceil((rating.candy / 10) * 5), // Convert 1-10 to 1-5
     decorations_rating: Math.ceil((rating.decorations / 10) * 5), // Convert 1-10 to 1-5
     notes: rating.notes || '',
-    address: rating.address || `${rating.lat?.toFixed(4)}, ${rating.lng?.toFixed(4)}`,
+    address: rating.address || `${lat?.toFixed(4)}, ${lng?.toFixed(4)}`,
     userFingerprint: rating.userFingerprint,
     created_date: rating.timestamp || rating.created_date || new Date().toISOString(),
     // Keep legacy fields for compatibility
@@ -77,6 +85,7 @@ export function saveRating(rating: Omit<Rating, 'id' | 'created_date'>): Rating 
     id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     created_date: new Date().toISOString(),
     // Ensure required fields
+    house_id: rating.house_id || `house-${rating.latitude.toFixed(5)}-${rating.longitude.toFixed(5)}`,
     latitude: rating.latitude,
     longitude: rating.longitude,
     candy_rating: rating.candy_rating,
@@ -94,23 +103,16 @@ export function saveRating(rating: Omit<Rating, 'id' | 'created_date'>): Rating 
   return newRating
 }
 
-// Check if user has already rated this house
+// Check if user has already rated a specific house
 export function hasUserRatedHouse(
   userFingerprint: string,
-  lat: number,
-  lng: number,
-  toleranceMeters: number = 10
+  houseId: string
 ): boolean {
   const ratings = getAllRatings()
-
-  // Convert tolerance to approximate degrees (rough approximation)
-  const toleranceDegrees = toleranceMeters / 111320
-
   return ratings.some(
     (rating) =>
       rating.userFingerprint === userFingerprint &&
-      Math.abs((rating.latitude || rating.lat || 0) - lat) < toleranceDegrees &&
-      Math.abs((rating.longitude || rating.lng || 0) - lng) < toleranceDegrees
+      rating.house_id === houseId
   )
 }
 

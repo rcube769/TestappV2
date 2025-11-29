@@ -106,39 +106,63 @@ function HalloweenMapContent() {
     }
   }, [])
 
-  // Get user location
+  // Get user location with better error handling for HTTPS requirement
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          }
-          setUserLocation(location)
-          setMapCenter([location.lat, location.lng])
-        },
-        (error) => {
-          console.error('Error getting location:', error)
-        }
-      )
+    if (typeof window === 'undefined') return
+    
+    if (!navigator.geolocation) {
+      console.error('Geolocation is not supported by this browser')
+      return
     }
+
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        }
+        setUserLocation(location)
+        setMapCenter([location.lat, location.lng])
+      },
+      (error) => {
+        console.error('Error getting location:', error)
+        // Show user-friendly error message
+        if (error.code === error.PERMISSION_DENIED) {
+          setAlreadyRatedError('Location permission denied. Please enable location access in your browser settings.')
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setAlreadyRatedError('Location information unavailable. Please check your device settings.')
+        } else if (error.code === error.TIMEOUT) {
+          setAlreadyRatedError('Location request timed out. Please try again.')
+        } else {
+          setAlreadyRatedError('Unable to get your location. Please ensure you are using HTTPS (required for geolocation).')
+        }
+        setTimeout(() => setAlreadyRatedError(null), 5000)
+      },
+      options
+    )
   }, [])
 
-  // Group ratings by location to calculate averages
+  // Group ratings by house_id to calculate averages
   const houseData = ratings.reduce((acc, rating) => {
-    const key = `${rating.latitude.toFixed(5)},${rating.longitude.toFixed(5)}`
-    if (!acc[key]) {
-      acc[key] = {
+    const houseId = rating.house_id || `house-${rating.latitude.toFixed(5)}-${rating.longitude.toFixed(5)}`
+    if (!acc[houseId]) {
+      acc[houseId] = {
+        house_id: houseId,
         latitude: rating.latitude,
         longitude: rating.longitude,
         address: rating.address,
         ratings: [],
       }
     }
-    acc[key].ratings.push(rating)
+    acc[houseId].ratings.push(rating)
     return acc
-  }, {} as Record<string, { latitude: number; longitude: number; address?: string; ratings: Rating[] }>)
+  }, {} as Record<string, { house_id: string; latitude: number; longitude: number; address?: string; ratings: Rating[] }>)
 
   const houses = Object.values(houseData).map((house) => ({
     ...house,
@@ -204,24 +228,45 @@ function HalloweenMapContent() {
     },
   })
 
-  const hasUserRatedLocation = (lat: number, lng: number) => {
-    if (!currentUserFingerprint) return false
-    return ratings.some(
-      (rating) =>
-        rating.userFingerprint === currentUserFingerprint &&
-        Math.abs(rating.latitude - lat) < 0.0001 &&
-        Math.abs(rating.longitude - lng) < 0.0001
-    )
+  // Find the closest house to user location
+  const findClosestHouse = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch('/api/houses/find', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: lat, longitude: lng }),
+      })
+      const data = await response.json()
+      return data.house
+    } catch (error) {
+      console.error('Error finding house:', error)
+      return null
+    }
   }
 
-  const handleRateCurrentLocation = () => {
-    if (userLocation) {
-      if (hasUserRatedLocation(userLocation.lat, userLocation.lng)) {
-        setAlreadyRatedError("You've already rated this house!")
-        setTimeout(() => setAlreadyRatedError(null), 3000)
-      } else {
-        setShowRatingInterface(true)
-      }
+  const handleRateCurrentLocation = async () => {
+    if (!userLocation || !currentUserFingerprint) return
+
+    // Find the closest house
+    const house = await findClosestHouse(userLocation.lat, userLocation.lng)
+    if (!house) {
+      setAlreadyRatedError('Unable to find house. Please try again.')
+      setTimeout(() => setAlreadyRatedError(null), 3000)
+      return
+    }
+
+    // Check if user has already rated this house
+    const hasRated = ratings.some(
+      (rating) =>
+        rating.userFingerprint === currentUserFingerprint &&
+        rating.house_id === house.id
+    )
+
+    if (hasRated) {
+      setAlreadyRatedError("You've already rated this house!")
+      setTimeout(() => setAlreadyRatedError(null), 3000)
+    } else {
+      setShowRatingInterface(true)
     }
   }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveRating, hasUserRatedHouse } from '@/lib/storage'
+import { findOrCreateHouse } from '@/lib/houses'
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,22 +30,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Find or create the closest house (within 50 meters)
+    const house = findOrCreateHouse(lat, lng, 50)
+
     // Check if user has already rated this house
-    if (hasUserRatedHouse(userFingerprint, lat, lng)) {
+    if (hasUserRatedHouse(userFingerprint, house.id)) {
       return NextResponse.json(
         { ok: false, error: "You've already rated this house!" },
         { status: 409 }
       )
     }
 
-    // Save the rating
+    // Save the rating with house_id
     const rating = saveRating({
+      house_id: house.id,
       latitude: lat,
       longitude: lng,
       candy_rating,
       decorations_rating,
       notes,
-      address,
+      address: house.address || address,
       userFingerprint,
     })
 

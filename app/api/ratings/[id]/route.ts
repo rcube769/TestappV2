@@ -3,11 +3,10 @@ import { getAllRatings, deleteRating } from '@/lib/storage'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = await Promise.resolve(params)
-    const { id } = resolvedParams
+    const { id } = await params
     
     if (!id) {
       return NextResponse.json(

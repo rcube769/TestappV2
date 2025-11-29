@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { getFingerprint } from '@/lib/fingerprint'
@@ -14,7 +14,7 @@ const MapSelector = dynamic(() => import('@/components/MapSelector'), {
   ),
 })
 
-export default function RatePage() {
+function RatePageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [decorations, setDecorations] = useState(5)
@@ -169,5 +169,19 @@ export default function RatePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function RatePage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-gray-900 rounded-lg p-8 shadow-lg border border-gray-800">
+          <p className="text-center text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <RatePageContent />
+    </Suspense>
   )
 }

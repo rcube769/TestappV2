@@ -13,6 +13,7 @@ interface House {
   averageDecorationsRating: number
   averageRating: number
   totalRatings: number
+  distance?: number
 }
 
 interface NearbyHousesListProps {
@@ -150,25 +151,28 @@ export default function NearbyHousesList({ houses, userLocation }: NearbyHousesL
               <p className="text-center text-gray-500 py-4">No nearby houses rated yet</p>
             ) : (
               <div className="space-y-2">
-                {housesWithDistance.map((house, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-3 rounded-lg bg-white border border-gray-200"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {house.distance < 1000
-                          ? `${Math.round(house.distance)}m`
-                          : `${(house.distance / 1000).toFixed(1)}km`}
-                      </Badge>
-                      <div className="flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-orange-500 text-orange-500" />
-                        <span className="text-sm font-semibold">{house.averageRating.toFixed(1)}</span>
+                {housesWithDistance.map((house, idx) => {
+                  const distance = house.distance ?? 0
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 rounded-lg bg-white border border-gray-200"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {distance < 1000
+                            ? `${Math.round(distance)}m`
+                            : `${(distance / 1000).toFixed(1)}km`}
+                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-orange-500 text-orange-500" />
+                          <span className="text-sm font-semibold">{house.averageRating.toFixed(1)}</span>
+                        </div>
                       </div>
+                      <span className="text-xs text-gray-500">{house.totalRatings} ratings</span>
                     </div>
-                    <span className="text-xs text-gray-500">{house.totalRatings} ratings</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>

@@ -31,9 +31,24 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 })
 
-// Custom marker icons
+// Custom marker icons with color gradient from red (bad) to green (good)
 const createCustomIcon = (avgRating: number) => {
-  const color = avgRating >= 4 ? '#f97316' : avgRating >= 3 ? '#eab308' : '#6b7280'
+  // Rating is 1-5, map to color gradient
+  // 1-2: Red (#ef4444)
+  // 2-3: Orange (#f97316)
+  // 3-4: Yellow (#eab308)
+  // 4-5: Green (#22c55e)
+  let color: string
+  if (avgRating >= 4) {
+    color = '#22c55e' // Green - excellent
+  } else if (avgRating >= 3) {
+    color = '#eab308' // Yellow - good
+  } else if (avgRating >= 2) {
+    color = '#f97316' // Orange - okay
+  } else {
+    color = '#ef4444' // Red - poor
+  }
+
   return L.divIcon({
     className: 'custom-marker',
     html: `<div style="background: ${color}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-weight: bold; color: white; font-size: 14px;">★</div>`,
@@ -603,6 +618,28 @@ function HalloweenMapContent() {
                   >
                     <Navigation className="w-5 h-5" />
                   </Button>
+                  {/* Rating Legend */}
+                  <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-3 border-2 border-gray-200">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Rating Scale:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-green-500" />
+                        <span className="text-xs text-gray-600">4-5 Excellent</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-yellow-500" />
+                        <span className="text-xs text-gray-600">3-4 Good</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-orange-500" />
+                        <span className="text-xs text-gray-600">2-3 Okay</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-red-500" />
+                        <span className="text-xs text-gray-600">1-2 Poor</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 {/* Rate Current Location Button */}
                 <Button

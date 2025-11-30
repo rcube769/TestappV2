@@ -28,11 +28,15 @@ const getUserRatingsKeyPrefix = (theme: ThemeType) => `${theme}:user_ratings:`
 
 // Normalize old format to new format
 function normalizeRating(rating: any): Rating {
-  // If already in new format, ensure house_id exists
+  // If already in new format, ensure house_id and theme exist
   if (rating.latitude !== undefined && rating.longitude !== undefined) {
     // If missing house_id, generate one based on location (for backward compatibility)
     if (!rating.house_id) {
       rating.house_id = `house-${rating.latitude.toFixed(5)}-${rating.longitude.toFixed(5)}`
+    }
+    // If missing theme, default to halloween (for backward compatibility)
+    if (!rating.theme) {
+      rating.theme = 'halloween'
     }
     return rating as Rating
   }
@@ -51,6 +55,7 @@ function normalizeRating(rating: any): Rating {
     address: rating.address || `${lat?.toFixed(4)}, ${lng?.toFixed(4)}`,
     userFingerprint: rating.userFingerprint,
     created_date: rating.timestamp || rating.created_date || new Date().toISOString(),
+    theme: rating.theme || 'halloween', // Default to halloween for backward compatibility
     // Keep legacy fields for compatibility
     lat: rating.lat,
     lng: rating.lng,

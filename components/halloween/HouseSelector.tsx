@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { X, Home, MapPin, Plus } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface House {
   id: string
@@ -22,6 +23,7 @@ interface HouseSelectorProps {
 }
 
 export default function HouseSelector({ onClose, onSelectHouse, userLocation, existingHouses }: HouseSelectorProps) {
+  const { theme, themeConfig } = useTheme()
   const [customAddress, setCustomAddress] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [nearbyHouses, setNearbyHouses] = useState<House[]>([])
@@ -163,8 +165,8 @@ export default function HouseSelector({ onClose, onSelectHouse, userLocation, ex
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         className="w-full max-w-md"
       >
-        <Card className="border-2 border-orange-200 shadow-2xl">
-          <CardHeader className="bg-gradient-to-r from-orange-500 to-purple-600 text-white relative">
+        <Card className={`border-2 ${theme === 'halloween' ? 'border-orange-200' : 'border-red-200'} shadow-2xl`}>
+          <CardHeader className={`bg-gradient-to-r ${themeConfig.colors.gradient} text-white relative`}>
             <Button
               variant="ghost"
               size="icon"
@@ -177,7 +179,7 @@ export default function HouseSelector({ onClose, onSelectHouse, userLocation, ex
               <Home className="w-8 h-8" />
               <CardTitle className="text-2xl">Select a House</CardTitle>
             </div>
-            <p className="text-orange-100 text-sm mt-2">Choose which house you want to rate</p>
+            <p className={`${theme === 'halloween' ? 'text-orange-100' : 'text-red-100'} text-sm mt-2`}>Choose which house you want to rate</p>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
             {/* Auto-Detected Addresses */}

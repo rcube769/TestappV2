@@ -18,6 +18,7 @@ import NearbyHousesList from '@/components/halloween/NearbyHousesList'
 import Leaderboard from '@/components/halloween/Leaderboard'
 import MyRatings from '@/components/halloween/MyRatings'
 import AdminPanel from '@/components/halloween/AdminPanel'
+import ThemeSwitcher from '@/components/ThemeSwitcher'
 import { Shield, X } from 'lucide-react'
 import { SINGLE_HOUSE_CONFIG } from '@/lib/houseConfig'
 
@@ -339,6 +340,7 @@ function HalloweenMapContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-purple-50 to-orange-50">
+      <ThemeSwitcher />
       <style>{`
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 1; }

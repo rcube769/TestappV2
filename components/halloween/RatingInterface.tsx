@@ -4,8 +4,9 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Star, X, Ghost, Candy, Sparkles, Home } from 'lucide-react'
+import { Star, X, Ghost, Candy, Sparkles, Home, Lightbulb, Gift } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface RatingInterfaceProps {
   onClose: () => void
@@ -15,6 +16,7 @@ interface RatingInterfaceProps {
 }
 
 export default function RatingInterface({ onClose, onSubmit, isSubmitting, houseAddress }: RatingInterfaceProps) {
+  const { theme, themeConfig } = useTheme()
   const [candyRating, setCandyRating] = useState(0)
   const [decorationsRating, setDecorationsRating] = useState(0)
   const [hoveredCandyRating, setHoveredCandyRating] = useState(0)
@@ -27,6 +29,14 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting, house
     }
   }
 
+  const Rating1Icon = theme === 'halloween' ? Candy : Lightbulb
+  const Rating2Icon = theme === 'halloween' ? Sparkles : Gift
+  const HeaderIcon = theme === 'halloween' ? Ghost : () => <span className="text-2xl">🎄</span>
+
+  const borderColor = theme === 'halloween' ? 'border-orange-200' : 'border-red-200'
+  const rating1Color = theme === 'halloween' ? 'orange' : 'red'
+  const rating2Color = theme === 'halloween' ? 'purple' : 'green'
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
@@ -36,8 +46,8 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting, house
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           className="w-full max-w-md"
         >
-          <Card className="border-2 border-orange-200 shadow-2xl">
-            <CardHeader className="bg-gradient-to-r from-orange-500 to-purple-600 text-white relative">
+          <Card className={`border-2 ${borderColor} shadow-2xl`}>
+            <CardHeader className={`bg-gradient-to-r ${themeConfig.colors.gradient} text-white relative`}>
               <Button
                 variant="ghost"
                 size="icon"
@@ -47,26 +57,26 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting, house
                 <X className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
-                <Ghost className="w-8 h-8" />
+                <HeaderIcon />
                 <CardTitle className="text-2xl">Rate This House</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               {/* Show selected house */}
               {houseAddress && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2 text-purple-700">
+                <div className={`bg-${rating2Color}-50 border border-${rating2Color}-200 rounded-lg p-3`}>
+                  <div className={`flex items-center gap-2 text-${rating2Color}-700`}>
                     <Home className="w-4 h-4" />
                     <span className="font-semibold text-sm">Rating: {houseAddress}</span>
                   </div>
                 </div>
               )}
 
-              {/* Candy Rating */}
-              <div className="text-center p-4 bg-orange-50 rounded-lg">
+              {/* Rating 1 (Candy/Lights) */}
+              <div className={`text-center p-4 bg-${rating1Color}-50 rounded-lg`}>
                 <div className="flex items-center justify-center gap-2 mb-3">
-                  <Candy className="w-5 h-5 text-orange-600" />
-                  <p className="text-sm font-semibold text-gray-700">Candy Quality</p>
+                  <Rating1Icon className={`w-5 h-5 text-${rating1Color}-600`} />
+                  <p className="text-sm font-semibold text-gray-700">{themeConfig.labels.rating1}</p>
                 </div>
                 <div className="flex justify-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -82,7 +92,7 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting, house
                       <Star
                         className={`w-10 h-10 transition-all ${
                           star <= (hoveredCandyRating || candyRating)
-                            ? 'fill-orange-500 text-orange-500'
+                            ? `fill-${rating1Color}-500 text-${rating1Color}-500`
                             : 'text-gray-300'
                         }`}
                       />
@@ -93,22 +103,18 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting, house
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 text-sm font-medium text-orange-600"
+                    className={`mt-2 text-sm font-medium text-${rating1Color}-600`}
                   >
-                    {candyRating === 1 && '😕 Not great'}
-                    {candyRating === 2 && '🍬 Okay'}
-                    {candyRating === 3 && '🍭 Good candy'}
-                    {candyRating === 4 && '🍫 Great stuff!'}
-                    {candyRating === 5 && '🎃 Full size bars!'}
+                    {themeConfig.labels.rating1Descriptions[candyRating]}
                   </motion.p>
                 )}
               </div>
 
-              {/* Decorations Rating */}
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
+              {/* Rating 2 (Decorations) */}
+              <div className={`text-center p-4 bg-${rating2Color}-50 rounded-lg`}>
                 <div className="flex items-center justify-center gap-2 mb-3">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  <p className="text-sm font-semibold text-gray-700">Decorations</p>
+                  <Rating2Icon className={`w-5 h-5 text-${rating2Color}-600`} />
+                  <p className="text-sm font-semibold text-gray-700">{themeConfig.labels.rating2}</p>
                 </div>
                 <div className="flex justify-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -124,7 +130,7 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting, house
                       <Star
                         className={`w-10 h-10 transition-all ${
                           star <= (hoveredDecorationsRating || decorationsRating)
-                            ? 'fill-purple-500 text-purple-500'
+                            ? `fill-${rating2Color}-500 text-${rating2Color}-500`
                             : 'text-gray-300'
                         }`}
                       />
@@ -135,13 +141,9 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting, house
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 text-sm font-medium text-purple-600"
+                    className={`mt-2 text-sm font-medium text-${rating2Color}-600`}
                   >
-                    {decorationsRating === 1 && '👻 Minimal effort'}
-                    {decorationsRating === 2 && '🎃 Some decorations'}
-                    {decorationsRating === 3 && '🦇 Pretty festive'}
-                    {decorationsRating === 4 && '🕷️ Very spooky!'}
-                    {decorationsRating === 5 && '💀 Amazing setup!'}
+                    {themeConfig.labels.rating2Descriptions[decorationsRating]}
                   </motion.p>
                 )}
               </div>
@@ -168,7 +170,7 @@ export default function RatingInterface({ onClose, onSubmit, isSubmitting, house
                 <Button
                   onClick={handleSubmit}
                   disabled={candyRating === 0 || decorationsRating === 0 || isSubmitting}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700"
+                  className={`flex-1 bg-gradient-to-r ${themeConfig.colors.gradient} hover:from-${rating1Color}-600 hover:to-${rating2Color}-700`}
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Rating'}
                 </Button>

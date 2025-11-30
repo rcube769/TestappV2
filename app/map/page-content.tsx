@@ -71,7 +71,7 @@ interface Rating {
 }
 
 function HalloweenMapContent() {
-  const { theme } = useTheme()
+  const { theme, themeConfig } = useTheme()
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showHouseSelector, setShowHouseSelector] = useState(false)
   const [showRatingInterface, setShowRatingInterface] = useState(false)
@@ -342,8 +342,28 @@ function HalloweenMapContent() {
     }
   }
 
+  const bgGradient = theme === 'halloween'
+    ? 'from-orange-50 via-purple-50 to-orange-50'
+    : 'from-red-50 via-green-50 to-red-50'
+
+  const headerGradient = theme === 'halloween'
+    ? 'from-orange-600 via-purple-600 to-orange-600'
+    : 'from-red-600 via-green-600 to-red-600'
+
+  const HeaderIcon = theme === 'halloween' ? Ghost : () => <span className="text-3xl">🎄</span>
+
+  const title = theme === 'halloween'
+    ? '🎃 Trick-or-Treat Rater'
+    : '🎄 Christmas Lights Rater'
+
+  const subtitle = theme === 'halloween'
+    ? 'Rate candy & decorations at each house!'
+    : 'Rate lights & decorations at each house!'
+
+  const subtitleColor = theme === 'halloween' ? 'text-orange-100' : 'text-red-100'
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-purple-50 to-orange-50">
+    <div className={`min-h-screen bg-gradient-to-br ${bgGradient}`}>
       <ThemeSwitcher />
       <style>{`
         @keyframes pulse {
@@ -356,13 +376,13 @@ function HalloweenMapContent() {
         }
       `}</style>
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-600 via-purple-600 to-orange-600 text-white py-6 px-4 shadow-lg">
+      <div className={`bg-gradient-to-r ${headerGradient} text-white py-6 px-4 shadow-lg`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Ghost className="w-8 h-8 animate-bounce" />
+            <HeaderIcon className="w-8 h-8 animate-bounce" />
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">🎃 Trick-or-Treat Rater</h1>
-              <p className="text-orange-100 text-sm">Rate candy & decorations at each house!</p>
+              <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
+              <p className={`${subtitleColor} text-sm`}>{subtitle}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -461,9 +481,9 @@ function HalloweenMapContent() {
               </Alert>
             )}
             {!userLocation ? (
-              <Card className="border-orange-200 bg-orange-50">
+              <Card className={`border-${themeConfig.colors.primary}-200 bg-${themeConfig.colors.primary}-50`}>
                 <CardContent className="p-6 text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-orange-600 mx-auto mb-3" />
+                  <Loader2 className={`w-8 h-8 animate-spin text-${themeConfig.colors.primary}-600 mx-auto mb-3`} />
                   <p className="text-gray-700">Getting your location...</p>
                   <p className="text-sm text-gray-500 mt-2">Make sure location services are enabled</p>
                 </CardContent>
@@ -578,7 +598,7 @@ function HalloweenMapContent() {
                   {/* Floating controls */}
                   <Button
                     onClick={recenterMap}
-                    className="absolute bottom-4 right-4 z-[1000] bg-purple-600 hover:bg-purple-700 shadow-lg"
+                    className={`absolute bottom-4 right-4 z-[1000] bg-${themeConfig.colors.secondary}-600 hover:bg-${themeConfig.colors.secondary}-700 shadow-lg`}
                     size="icon"
                   >
                     <Navigation className="w-5 h-5" />
@@ -587,7 +607,7 @@ function HalloweenMapContent() {
                 {/* Rate Current Location Button */}
                 <Button
                   onClick={handleRateCurrentLocation}
-                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-lg py-6 shadow-lg"
+                  className={`w-full bg-gradient-to-r ${themeConfig.colors.gradient} text-white text-lg py-6 shadow-lg`}
                   size="lg"
                 >
                   <Star className="w-5 h-5 mr-2" />

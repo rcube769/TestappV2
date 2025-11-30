@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 
 export const dynamic = 'force-dynamic'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTheme } from '@/contexts/ThemeContext'
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -70,6 +71,7 @@ interface Rating {
 }
 
 function HalloweenMapContent() {
+  const { theme } = useTheme()
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showHouseSelector, setShowHouseSelector] = useState(false)
   const [showRatingInterface, setShowRatingInterface] = useState(false)
@@ -95,11 +97,11 @@ function HalloweenMapContent() {
     }
   }, [])
 
-  // Fetch ratings
+  // Fetch ratings for current theme
   const { data: ratings = [], isLoading } = useQuery<Rating[]>({
-    queryKey: ['houseRatings'],
+    queryKey: ['houseRatings', theme],
     queryFn: async () => {
-      const response = await fetch('/api/ratings')
+      const response = await fetch(`/api/ratings?theme=${theme}`)
       const data = await response.json()
       return data.ratings || []
     },
@@ -194,6 +196,7 @@ function HalloweenMapContent() {
       notes: string
       address: string
       userFingerprint: string
+      theme: string
     }) => {
       const response = await fetch('/api/rate', {
         method: 'POST',
@@ -209,7 +212,7 @@ function HalloweenMapContent() {
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['houseRatings'] })
+      queryClient.invalidateQueries({ queryKey: ['houseRatings', theme] })
       setShowRatingInterface(false)
       setAlreadyRatedError(null)
     },
@@ -233,7 +236,7 @@ function HalloweenMapContent() {
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['houseRatings'] })
+      queryClient.invalidateQueries({ queryKey: ['houseRatings', theme] })
     },
   })
 
@@ -289,6 +292,7 @@ function HalloweenMapContent() {
       notes: notes || '',
       address: selectedHouseAddress, // Use the selected address
       userFingerprint: currentUserFingerprint,
+      theme: theme, // Include current theme
     }
 
     createRatingMutation.mutate(ratingData)

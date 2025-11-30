@@ -1,17 +1,20 @@
 import { kv } from '@vercel/kv'
 
+export type ThemeType = 'halloween' | 'christmas'
+
 // New format (preferred)
 export interface Rating {
   id: string
   house_id: string // ID of the house being rated
   latitude: number
   longitude: number
-  candy_rating: number // 1-5
+  candy_rating: number // 1-5 (or lights_rating for christmas)
   decorations_rating: number // 1-5
   notes?: string
   address?: string
   userFingerprint: string
   created_date: string
+  theme: ThemeType // Track which theme this rating belongs to
   // Legacy fields for backward compatibility
   lat?: number
   lng?: number
@@ -20,8 +23,8 @@ export interface Rating {
   timestamp?: string
 }
 
-const RATINGS_KEY = 'halloween:ratings'
-const USER_RATINGS_KEY_PREFIX = 'halloween:user_ratings:'
+const getRatingsKey = (theme: ThemeType) => `${theme}:ratings`
+const getUserRatingsKeyPrefix = (theme: ThemeType) => `${theme}:user_ratings:`
 
 // Normalize old format to new format
 function normalizeRating(rating: any): Rating {
@@ -57,10 +60,11 @@ function normalizeRating(rating: any): Rating {
   }
 }
 
-// Read all ratings
-export async function getAllRatings(): Promise<Rating[]> {
+// Read all ratings for a specific theme
+export async function getAllRatings(theme: ThemeType = 'halloween'): Promise<Rating[]> {
   try {
-    const ratings = await kv.get<Rating[]>(RATINGS_KEY)
+    const ratingsKey = getRatingsKey(theme)
+    const ratings = await kv.get<Rating[]>(ratingsKey)
     if (!ratings || !Array.isArray(ratings)) {
       return []
     }
@@ -73,12 +77,14 @@ export async function getAllRatings(): Promise<Rating[]> {
 
 // Save a new rating
 export async function saveRating(rating: Omit<Rating, 'id' | 'created_date'>): Promise<Rating> {
-  const ratings = await getAllRatings()
+  const theme = rating.theme || 'halloween'
+  const ratings = await getAllRatings(theme)
 
   const newRating: Rating = {
     ...rating,
     id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     created_date: new Date().toISOString(),
+    theme: theme,
     // Ensure required fields
     house_id: rating.house_id || `house-${rating.latitude.toFixed(5)}-${rating.longitude.toFixed(5)}`,
     latitude: rating.latitude,
@@ -92,11 +98,12 @@ export async function saveRating(rating: Omit<Rating, 'id' | 'created_date'>): P
 
   ratings.push(newRating)
 
-  // Save to KV
-  await kv.set(RATINGS_KEY, ratings)
+  // Save to theme-specific KV key
+  const ratingsKey = getRatingsKey(theme)
+  await kv.set(ratingsKey, ratings)
 
   // Track user's ratings for this house for quick duplicate checking
-  const userRatingsKey = `${USER_RATINGS_KEY_PREFIX}${rating.userFingerprint}`
+  const userRatingsKey = `${getUserRatingsKeyPrefix(theme)}${rating.userFingerprint}`
   const userHouseIds = await kv.get<string[]>(userRatingsKey) || []
   if (!userHouseIds.includes(newRating.house_id)) {
     userHouseIds.push(newRating.house_id)
@@ -106,22 +113,23 @@ export async function saveRating(rating: Omit<Rating, 'id' | 'created_date'>): P
   return newRating
 }
 
-// Check if user has already rated a specific house
+// Check if user has already rated a specific house in a specific theme
 export async function hasUserRatedHouse(
   userFingerprint: string,
-  houseId: string
+  houseId: string,
+  theme: ThemeType = 'halloween'
 ): Promise<boolean> {
   try {
-    // Fast path: check user's specific ratings
-    const userRatingsKey = `${USER_RATINGS_KEY_PREFIX}${userFingerprint}`
+    // Fast path: check user's specific ratings for this theme
+    const userRatingsKey = `${getUserRatingsKeyPrefix(theme)}${userFingerprint}`
     const userHouseIds = await kv.get<string[]>(userRatingsKey)
 
     if (userHouseIds && userHouseIds.includes(houseId)) {
       return true
     }
 
-    // Fallback: check all ratings (for backward compatibility)
-    const ratings = await getAllRatings()
+    // Fallback: check all ratings for this theme (for backward compatibility)
+    const ratings = await getAllRatings(theme)
     return ratings.some(
       (rating) =>
         rating.userFingerprint === userFingerprint &&
@@ -130,7 +138,7 @@ export async function hasUserRatedHouse(
   } catch (error) {
     console.error('Error checking if user rated house:', error)
     // Fallback to checking all ratings
-    const ratings = await getAllRatings()
+    const ratings = await getAllRatings(theme)
     return ratings.some(
       (rating) =>
         rating.userFingerprint === userFingerprint &&
@@ -139,17 +147,27 @@ export async function hasUserRatedHouse(
   }
 }
 
-// Delete a rating by ID
+// Delete a rating by ID (searches across both themes)
 export async function deleteRating(ratingId: string): Promise<boolean> {
   try {
-    const ratings = await getAllRatings()
-    const initialLength = ratings.length
-    const filtered = ratings.filter(r => r.id !== ratingId)
+    // Try deleting from Halloween ratings
+    const halloweenRatings = await getAllRatings('halloween')
+    const halloweenFiltered = halloweenRatings.filter(r => r.id !== ratingId)
 
-    if (filtered.length < initialLength) {
-      await kv.set(RATINGS_KEY, filtered)
+    if (halloweenFiltered.length < halloweenRatings.length) {
+      await kv.set(getRatingsKey('halloween'), halloweenFiltered)
       return true
     }
+
+    // Try deleting from Christmas ratings
+    const christmasRatings = await getAllRatings('christmas')
+    const christmasFiltered = christmasRatings.filter(r => r.id !== ratingId)
+
+    if (christmasFiltered.length < christmasRatings.length) {
+      await kv.set(getRatingsKey('christmas'), christmasFiltered)
+      return true
+    }
+
     return false
   } catch (error) {
     console.error('Error deleting rating:', error)

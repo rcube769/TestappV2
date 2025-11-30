@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     const notes = body.notes || ''
     const address = body.address
     const userFingerprint = body.userFingerprint
+    const theme = body.theme || 'halloween'
 
     // Validate input
     if (!lat || !lng || candy_rating === undefined || decorations_rating === undefined || !userFingerprint || !address) {
@@ -33,15 +34,15 @@ export async function POST(request: NextRequest) {
     // Find or create house by address
     const house = await findOrCreateHouseByAddress(lat, lng, address)
 
-    // Check if user has already rated this house
-    if (await hasUserRatedHouse(userFingerprint, house.id)) {
+    // Check if user has already rated this house in this theme
+    if (await hasUserRatedHouse(userFingerprint, house.id, theme)) {
       return NextResponse.json(
         { ok: false, error: "You've already rated this house!" },
         { status: 409 }
       )
     }
 
-    // Save the rating with house_id
+    // Save the rating with house_id and theme
     const rating = await saveRating({
       house_id: house.id,
       latitude: lat,
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
       notes,
       address: house.address || address,
       userFingerprint,
+      theme,
     })
 
     console.log('New rating saved:', rating)

@@ -125,30 +125,21 @@ export async function hasUserRatedHouse(
   theme: ThemeType = 'halloween'
 ): Promise<boolean> {
   try {
-    // Fast path: check user's specific ratings for this theme
-    const userRatingsKey = `${getUserRatingsKeyPrefix(theme)}${userFingerprint}`
-    const userHouseIds = await kv.get<string[]>(userRatingsKey)
-
-    if (userHouseIds && userHouseIds.includes(houseId)) {
-      return true
-    }
-
-    // Fallback: check all ratings for this theme (for backward compatibility)
+    // Always check all ratings (most reliable source of truth)
+    // Skip the fast-path cache to avoid stale data issues
     const ratings = await getAllRatings(theme)
-    return ratings.some(
+    const hasRated = ratings.some(
       (rating) =>
         rating.userFingerprint === userFingerprint &&
         rating.house_id === houseId
     )
+
+    console.log(`Checking if user ${userFingerprint} rated house ${houseId} in ${theme}: ${hasRated}`)
+    return hasRated
   } catch (error) {
     console.error('Error checking if user rated house:', error)
-    // Fallback to checking all ratings
-    const ratings = await getAllRatings(theme)
-    return ratings.some(
-      (rating) =>
-        rating.userFingerprint === userFingerprint &&
-        rating.house_id === houseId
-    )
+    // On error, return false to allow rating (fail open)
+    return false
   }
 }
 
